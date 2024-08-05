@@ -32,6 +32,48 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "commands",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{catalog-base-url}}/{{api-reference}}/{{api-version}}/{{catalog-context-name}}/health-check/commands",
+									"host": [
+										"{{catalog-base-url}}"
+									],
+									"path": [
+										"{{api-reference}}",
+										"{{api-version}}",
+										"{{catalog-context-name}}",
+										"health-check",
+										"commands"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "queries",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{catalog-base-url}}/{{api-reference}}/{{api-version}}/{{catalog-context-name}}/health-check/queries",
+									"host": [
+										"{{catalog-base-url}}"
+									],
+									"path": [
+										"{{api-reference}}",
+										"{{api-version}}",
+										"{{catalog-context-name}}",
+										"health-check",
+										"queries"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}
@@ -59,6 +101,48 @@
 										"{{product-context-name}}",
 										"health-check",
 										"bounded-contexts"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "commands",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{product-base-url}}/{{api-reference}}/{{api-version}}/{{product-context-name}}/health-check/commands",
+									"host": [
+										"{{product-base-url}}"
+									],
+									"path": [
+										"{{api-reference}}",
+										"{{api-version}}",
+										"{{product-context-name}}",
+										"health-check",
+										"commands"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "queries",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{product-base-url}}/{{api-reference}}/{{api-version}}/{{product-context-name}}/health-check/queries",
+									"host": [
+										"{{product-base-url}}"
+									],
+									"path": [
+										"{{api-reference}}",
+										"{{api-version}}",
+										"{{product-context-name}}",
+										"health-check",
+										"queries"
 									]
 								}
 							},
