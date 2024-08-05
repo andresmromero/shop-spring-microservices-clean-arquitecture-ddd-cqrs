@@ -36,6 +36,37 @@
 					]
 				}
 			]
+		},
+		{
+			"name": "product-context",
+			"item": [
+				{
+					"name": "health-check",
+					"item": [
+						{
+							"name": "bounded-contexts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{product-base-url}}/{{api-reference}}/{{api-version}}/{{product-context-name}}/health-check/bounded-contexts",
+									"host": [
+										"{{product-base-url}}"
+									],
+									"path": [
+										"{{api-reference}}",
+										"{{api-version}}",
+										"{{product-context-name}}",
+										"health-check",
+										"bounded-contexts"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
 		}
 	]
 }
