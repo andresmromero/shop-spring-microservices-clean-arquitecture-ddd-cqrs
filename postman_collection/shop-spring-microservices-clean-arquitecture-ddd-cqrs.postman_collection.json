@@ -1,0 +1,46 @@
+{
+	"info": {
+		"_postman_id": "b0eb2fb4-42b3-4ac5-a9ee-ab9ef301f292",
+		"name": "shop-spring-microservices-clean-arquitecture-ddd-cqrs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12480337"
+	},
+	"item": [
+		{
+			"name": "user-context",
+			"item": [
+				{
+					"name": "shared",
+					"item": [
+						{
+							"name": "health_check",
+							"item": [
+								{
+									"name": "usr_boundled_context",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{user-base-url}}/{{user-context-name}}/{{api-reference}}/{{api-version}}/health-check/bounded-contexts",
+											"host": [
+												"{{user-base-url}}"
+											],
+											"path": [
+												"{{user-context-name}}",
+												"{{api-reference}}",
+												"{{api-version}}",
+												"health-check",
+												"bounded-contexts"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	]
+}

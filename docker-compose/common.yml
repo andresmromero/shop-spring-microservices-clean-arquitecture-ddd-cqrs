@@ -1,0 +1,12 @@
+services:
+  common:
+    networks:
+      - ${NETWORK_GLOBAL}
+
+  common-apps:
+    extends:
+      service: common
+    deploy:
+      resources:
+        limits:
+          memory: 700m
