@@ -10,3 +10,8 @@ services:
       resources:
         limits:
           memory: 700m
+
+
+  common-infra:
+    extends:
+      service: common

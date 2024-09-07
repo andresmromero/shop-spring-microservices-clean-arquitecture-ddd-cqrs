@@ -21,9 +21,9 @@
 										"method": "GET",
 										"header": [],
 										"url": {
-											"raw": "{{user-base-url}}/{{user-context-name}}/{{api-reference}}/{{api-version}}/health-check/bounded-contexts",
+											"raw": "{{gateway-base-url}}/{{user-context-name}}/{{api-reference}}/{{api-version}}/health-check/bounded-contexts",
 											"host": [
-												"{{user-base-url}}"
+												"{{gateway-base-url}}"
 											],
 											"path": [
 												"{{user-context-name}}",
@@ -37,6 +37,117 @@
 									"response": []
 								}
 							]
+						}
+					]
+				},
+				{
+					"name": "actuator",
+					"item": [
+						{
+							"name": "usr_readiness",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{user-base-url}}/actuator/health/readiness",
+									"host": [
+										"{{user-base-url}}"
+									],
+									"path": [
+										"actuator",
+										"health",
+										"readiness"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "configuration-server",
+			"item": [
+				{
+					"name": "actuator",
+					"item": [
+						{
+							"name": "cfs_readiness",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{configuration-server-base-url}}/actuator/health/readiness",
+									"host": [
+										"{{configuration-server-base-url}}"
+									],
+									"path": [
+										"actuator",
+										"health",
+										"readiness"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "discovery-server",
+			"item": [
+				{
+					"name": "actuator",
+					"item": [
+						{
+							"name": "dys_readiness",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{discovery-server-base-url}}/actuator/health/readiness",
+									"host": [
+										"{{discovery-server-base-url}}"
+									],
+									"path": [
+										"actuator",
+										"health",
+										"readiness"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "gateway",
+			"item": [
+				{
+					"name": "actuator",
+					"item": [
+						{
+							"name": "gwy_readiness",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{gateway-base-url}}/actuator/health/readiness",
+									"host": [
+										"{{gateway-base-url}}"
+									],
+									"path": [
+										"actuator",
+										"health",
+										"readiness"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}

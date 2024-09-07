@@ -2,15 +2,86 @@ name: 'shop'
 
 services:
 
+  configuration-server:
+    image: ${CONFIGURATION_SERVER_DOCKER_IMAGE}
+    ports:
+      - ${CONFIGURATION_SERVER_PORTS}:${CONFIGURATION_SERVER_PORTS}
+    healthcheck:
+      test: "curl --fail --silent localhost:${CONFIGURATION_SERVER_PORTS}/actuator/health/readiness | grep UP || exit 1"
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    environment:
+      SPRING_APPLICATION_NAME: ${CONFIGURATION_SERVER_APPLICATION_NAME}
+    extends:
+      service: common-apps
+      file: common.yml
+
+
+  discovery-server:
+    image: ${DISCOVERY_SERVER_DOCKER_IMAGE}
+    ports:
+      - ${DISCOVERY_SERVER_PORTS}:${DISCOVERY_SERVER_PORTS}
+    depends_on:
+      configuration-server:
+        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent localhost:${DISCOVERY_SERVER_PORTS}/actuator/health/readiness | grep UP || exit 1"
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    environment:
+      SPRING_APPLICATION_NAME: ${DISCOVERY_SERVER_APPLICATION_NAME}
+      SPRING_PROFILES_ACTIVE: ${ENV_SPRING_PROFILES_ACTIVE_DEFAULT}
+      SPRING_CONFIG_IMPORT: ${CONFIGURATION_SERVER_APPLICATION_NAME}:http://${CONFIGURATION_SERVER_DOCKER_CONTAINER_NAME}:${CONFIGURATION_SERVER_PORTS}/
+    extends:
+      service: common-apps
+      file: common.yml
+
+
   user-context:
     image: ${USER_CONTEXT_DOCKER_IMAGE}
     ports:
       - ${USER_CONTEXT_PORTS}:${USER_CONTEXT_PORTS}
+    depends_on:
+      configuration-server:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
     environment:
       SPRING_APPLICATION_NAME: ${USER_CONTEXT_APPLICATION_NAME}
+      SPRING_PROFILES_ACTIVE: ${ENV_SPRING_PROFILES_ACTIVE_DEV}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${DISCOVERY_SERVER_APPLICATION_NAME}:${DISCOVERY_SERVER_PORTS}/eureka/
+      SPRING_CONFIG_IMPORT: ${CONFIGURATION_SERVER_APPLICATION_NAME}:http://${CONFIGURATION_SERVER_DOCKER_CONTAINER_NAME}:${CONFIGURATION_SERVER_PORTS}/
+    healthcheck:
+      test: "curl --fail --silent localhost:${USER_CONTEXT_PORTS}/actuator/health/readiness | grep UP || exit 1"
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
     extends:
       service: common-apps
       file: common.yml
+
+
+  api-gateway:
+    image: ${GATEWAY_DOCKER_IMAGE}
+    ports:
+      - ${GATEWAY_PORTS}:${GATEWAY_PORTS}
+    depends_on:
+      user-context:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: ${GATEWAY_APPLICATION_NAME}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${DISCOVERY_SERVER_APPLICATION_NAME}:${DISCOVERY_SERVER_PORTS}/eureka/
+      SPRING_PROFILES_ACTIVE: ${ENV_SPRING_PROFILES_ACTIVE_DEFAULT}
+      SPRING_CONFIG_IMPORT: ${CONFIGURATION_SERVER_APPLICATION_NAME}:http://${CONFIGURATION_SERVER_DOCKER_CONTAINER_NAME}:${CONFIGURATION_SERVER_PORTS}/
+    extends:
+      service: common-apps
+      file: common.yml
+
 
 networks:
   shop-network:

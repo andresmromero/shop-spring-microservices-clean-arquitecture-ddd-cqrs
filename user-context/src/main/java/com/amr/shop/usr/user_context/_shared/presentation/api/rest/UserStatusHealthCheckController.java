@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/users/api/v1/health-check")
+@RequestMapping("/api/v1/health-check")
 public class UserStatusHealthCheckController {
 
     @GetMapping("bounded-contexts")

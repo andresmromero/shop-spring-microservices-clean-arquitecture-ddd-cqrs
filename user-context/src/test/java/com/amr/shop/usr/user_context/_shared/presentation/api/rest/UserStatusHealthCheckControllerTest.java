@@ -22,7 +22,7 @@ class UserStatusHealthCheckControllerTest {
     @Test
     void shouldHealthCheckReturnStatusOkWithBody() throws Exception {
 
-        String url = "/users/api/v1/health-check/bounded-contexts";
+        String url = "/api/v1/health-check/bounded-contexts";
         HashMap<String, String> expectedStatus = new HashMap<>();
         expectedStatus.put("bounded_context", "user-context");
         expectedStatus.put("status", "ok");
