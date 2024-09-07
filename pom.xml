@@ -19,6 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <otelVersion>1.33.5</otelVersion>
     </properties>
     <modules>
         <module>user-context</module>
@@ -34,6 +35,12 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry.javaagent</groupId>
+                <artifactId>opentelemetry-javaagent</artifactId>
+                <version>${otelVersion}</version>
+                <scope>runtime</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

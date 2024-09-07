@@ -2,6 +2,227 @@ name: 'shop'
 
 services:
 
+  read:
+    image: ${LOKI_DOCKER_IMAGE}
+    command: "-config.file=/etc/loki/config.yaml -target=read"
+    ports:
+      - 3101:3100
+      - 7946
+      - 9095
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/config.yaml
+    depends_on:
+      - minio
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: &loki-dns
+      shop-network:
+        aliases:
+          - loki
+
+  write:
+    image: ${LOKI_DOCKER_IMAGE}
+    command: "-config.file=/etc/loki/config.yaml -target=write"
+    ports:
+      - 3102:3100
+      - 7946
+      - 9095
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/config.yaml
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - minio
+    networks:
+      <<: *loki-dns
+
+  alloy:
+    image: ${ALLOW_DOCKER_IMAGE}
+    volumes:
+      - ./observability/alloy/alloy-local-config.yaml:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    ports:
+      - 12345:12345
+    depends_on:
+      - gateway
+    extends:
+      service: common-infra
+      file: common.yml
+
+  minio:
+    image: ${MINIO_DOCKER_IMAGE}
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /data/loki-data && \
+        mkdir -p /data/loki-ruler && \
+        minio server /data
+    environment:
+      - MINIO_ROOT_USER=loki
+      - MINIO_ROOT_PASSWORD=supersecret
+      - MINIO_PROMETHEUS_AUTH_TYPE=public
+      - MINIO_UPDATE=off
+    ports:
+      - 9000
+    volumes:
+      - ./.data/minio:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 15s
+      timeout: 20s
+      retries: 5
+    extends:
+      service: common-infra
+      file: common.yml
+
+
+  prometheus:
+    image: ${PROMETHEUS_DOCKER_IMAGE}
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    extends:
+      service: common-infra
+      file: common.yml
+
+
+  tempo:
+    image: ${TEMPO_DOCKER_IMAGE}
+    container_name: tempo
+    command: -config.file /etc/tempo-config.yml
+    ports:
+      - "3110:3100"
+      - ${TEMPO_DOCKER_PORTS}:${TEMPO_DOCKER_PORTS}
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo-config.yml
+    extends:
+      service: common-infra
+      file: common.yml
+
+
+  grafana:
+    image: ${GRAFANA_DOCKER_IMAGE}
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    depends_on:
+      - gateway
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        /run.sh
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./observability/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    extends:
+      service: common-infra
+      file: common.yml
+
+
+  backend:
+    image: ${LOKI_DOCKER_IMAGE}
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/config.yaml
+    ports:
+      - "3100"
+      - "7946"
+    command: "-config.file=/etc/loki/config.yaml -target=backend -legacy-read-mode=false"
+    depends_on:
+      - gateway
+    extends:
+      service: common-infra
+      file: common.yml
+
+
+  gateway:
+    image: ${GRAFANA_GATEWAY_NGINX}
+    depends_on:
+      - read
+      - write
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        cat <<EOF > /etc/nginx/nginx.conf
+        user  nginx;
+        worker_processes  5;  ## Default: 1
+
+        events {
+          worker_connections   1000;
+        }
+
+        http {
+          resolver 127.0.0.11;
+
+          server {
+            listen             3100;
+
+            location = / {
+              return 200 'OK';
+              auth_basic off;
+            }
+
+            location = /api/prom/push {
+              proxy_pass       http://write:3100\$$request_uri;
+            }
+
+            location = /api/prom/tail {
+              proxy_pass       http://read:3100\$$request_uri;
+              proxy_set_header Upgrade \$$http_upgrade;
+              proxy_set_header Connection "upgrade";
+            }
+
+            location ~ /api/prom/.* {
+              proxy_pass       http://read:3100\$$request_uri;
+            }
+
+            location = /loki/api/v1/push {
+              proxy_pass       http://write:3100\$$request_uri;
+            }
+
+            location = /loki/api/v1/tail {
+              proxy_pass       http://read:3100\$$request_uri;
+              proxy_set_header Upgrade \$$http_upgrade;
+              proxy_set_header Connection "upgrade";
+            }
+
+            location ~ /loki/api/.* {
+              proxy_pass       http://read:3100\$$request_uri;
+            }
+          }
+        }
+        EOF
+        /docker-entrypoint.sh nginx -g "daemon off;"
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: [ "CMD", "service", "nginx", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    extends:
+      service: common-infra
+      file: common.yml
+
+
   configuration-server:
     image: ${CONFIGURATION_SERVER_DOCKER_IMAGE}
     ports:
@@ -12,8 +233,11 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
       start_period: ${HEALTHCHECK_START_PERIOD}
+    volumes:
+      - ./observability/opentelemetry/${ENV_OPENTELEMETRY_FILE_NAME}:/app/libs/${ENV_OPENTELEMETRY_FILE_NAME}
     environment:
       SPRING_APPLICATION_NAME: ${CONFIGURATION_SERVER_APPLICATION_NAME}
+      OTEL_SERVICE_NAME: ${CONFIGURATION_SERVER_APPLICATION_NAME}
     extends:
       service: common-apps
       file: common.yml
@@ -36,6 +260,9 @@ services:
       SPRING_APPLICATION_NAME: ${DISCOVERY_SERVER_APPLICATION_NAME}
       SPRING_PROFILES_ACTIVE: ${ENV_SPRING_PROFILES_ACTIVE_DEFAULT}
       SPRING_CONFIG_IMPORT: ${CONFIGURATION_SERVER_APPLICATION_NAME}:http://${CONFIGURATION_SERVER_DOCKER_CONTAINER_NAME}:${CONFIGURATION_SERVER_PORTS}/
+      OTEL_SERVICE_NAME: ${DISCOVERY_SERVER_APPLICATION_NAME}
+    volumes:
+      - ./observability/opentelemetry/${ENV_OPENTELEMETRY_FILE_NAME}:/app/libs/${ENV_OPENTELEMETRY_FILE_NAME}
     extends:
       service: common-apps
       file: common.yml
@@ -55,12 +282,15 @@ services:
       SPRING_PROFILES_ACTIVE: ${ENV_SPRING_PROFILES_ACTIVE_DEV}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${DISCOVERY_SERVER_APPLICATION_NAME}:${DISCOVERY_SERVER_PORTS}/eureka/
       SPRING_CONFIG_IMPORT: ${CONFIGURATION_SERVER_APPLICATION_NAME}:http://${CONFIGURATION_SERVER_DOCKER_CONTAINER_NAME}:${CONFIGURATION_SERVER_PORTS}/
+      OTEL_SERVICE_NAME: ${USER_CONTEXT_APPLICATION_NAME}
     healthcheck:
       test: "curl --fail --silent localhost:${USER_CONTEXT_PORTS}/actuator/health/readiness | grep UP || exit 1"
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
       start_period: ${HEALTHCHECK_START_PERIOD}
+    volumes:
+      - ./observability/opentelemetry/${ENV_OPENTELEMETRY_FILE_NAME}:/app/libs/${ENV_OPENTELEMETRY_FILE_NAME}
     extends:
       service: common-apps
       file: common.yml
@@ -78,6 +308,15 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${DISCOVERY_SERVER_APPLICATION_NAME}:${DISCOVERY_SERVER_PORTS}/eureka/
       SPRING_PROFILES_ACTIVE: ${ENV_SPRING_PROFILES_ACTIVE_DEFAULT}
       SPRING_CONFIG_IMPORT: ${CONFIGURATION_SERVER_APPLICATION_NAME}:http://${CONFIGURATION_SERVER_DOCKER_CONTAINER_NAME}:${CONFIGURATION_SERVER_PORTS}/
+      OTEL_SERVICE_NAME: ${GATEWAY_APPLICATION_NAME}
+    healthcheck:
+      test: "curl --fail --silent localhost:${APP_API_GATEWAY_PORTS}/actuator/health/readiness | grep UP || exit 1"
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
+    volumes:
+      - ./observability/opentelemetry/${ENV_OPENTELEMETRY_FILE_NAME}:/app/libs/${ENV_OPENTELEMETRY_FILE_NAME}
     extends:
       service: common-apps
       file: common.yml
