@@ -20,12 +20,15 @@
         <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
         <otelVersion>1.33.5</otelVersion>
+        <reflections.version>0.10.2</reflections.version>
+        <context.version>0.0.1-SNAPSHOT</context.version>
     </properties>
     <modules>
         <module>user-context</module>
         <module>configuration-server</module>
         <module>discovery-server</module>
         <module>gateway</module>
+        <module>common-context</module>
     </modules>
     <dependencyManagement>
         <dependencies>
@@ -41,6 +44,16 @@
                 <artifactId>opentelemetry-javaagent</artifactId>
                 <version>${otelVersion}</version>
                 <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.reflections</groupId>
+                <artifactId>reflections</artifactId>
+                <version>${reflections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amr.shop.cmn</groupId>
+                <artifactId>common-context</artifactId>
+                <version>${context.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
